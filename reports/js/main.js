@@ -16,7 +16,7 @@ window.oppa = {
 		{
 			for (prog in window.oppa.fixtures.progressions)
 			{
-				$(".progress-bar").each(function()
+				$(".progress-bar:not([data-comp-type='progress-bar'])").each(function()
 				{
 					oprand = Math.floor(Math.random() * 2),
 						timerand = Math.floor(Math.random() * 100) * (oprand % 2 ? 1 : -1),
@@ -33,6 +33,32 @@ window.oppa = {
 					}, time, $(this), prog, time);
 				});
 			}
+		},
+		"sources": {
+			"BoomerangPerformanceAuditor": {
+				"name": "Yahoo's Boomerang",
+				"id": "BoomerangPerformanceAuditor",
+				"selected": true
+			},
+			"BrowserCachePerformanceAuditor": {
+				"name": "Browser Cache",
+				"id": "BrowserCachePerformanceAuditor"
+			},
+			"XHProfPerformanceAuditor": {
+				"name": "Facebook's XHProf",
+				"id": "XHProfPerformanceAuditor",
+				"selected": true
+			},
+			"NetworkAuditor": {
+				"name": "Network Profiler",
+				"id": "NetworkAuditor",
+				"selected": true
+			}
+		},
+		"realmSourceMap": {
+			"frontend": ["BoomerangPerformanceAuditor", "BrowserCachePerformanceAuditor"],
+			"backend": ["XHProfPerformanceAuditor"],
+			"network": ["NetworkAuditor"]
 		}
 	},
 	
@@ -46,12 +72,19 @@ window.oppa = {
 	
 	"widgets": {},
 	"_widgets": {
+		
 		"more-info": {},
+		
 		"raw-stats": {
 			"stats": [],
 			"init": function()
 			{
 				this.progressLoader(0);
+				
+				if (!this.initialized)
+				{
+					this.bindings();
+				}
 				
 				this.stats = this.generateStats();
 				
@@ -63,63 +96,353 @@ window.oppa = {
 			"render": function()
 			{
 				var _this = this;
-				var $list = this.target.find(".list-group");
+				var $lists = this.target.find("[data-comp-type='tab-content'][data-comp-widget='"+this.name+"']");
+				var $tabBar = this.target.find("[data-comp-type='tab-bar'][data-comp-widget='"+this.name+"']");
 				
-				$list.children().remove();
+				$lists.fadeOut().children().remove().end().each(function()
+				{
+					$(this).append( $("<li class=\"list-group-item oppa-stat-empty\">").text("No stats yet...") );
+				});
 				
 				this.progressLoader(50);
 				
+				for(var listName in this.stats)
+				{
+					var $list = $lists.filter("[data-comp-name='"+listName+"']");
+					this.stats[ listName ].map(function(stat)
+					{
+						if (stat.stat == "break")
+						{
+							$list.append( $("<h4>").text(stat.name).prepend($("<hr/>")) );
+						}
+						else
+						{
+							$list.append( 
+								$("<li class=\"list-group-item\">")
+									.text( stat.name )
+									.append( $("<span class=\"badge\">").text( stat.stat ) )
+									.hide().fadeIn().css("display","block")
+							);
+						}
+					});
+				}
 				
-				this.stats.map(function(stat){
-					$list.append( 
-						$("<li class=\"list-group-item\">")
-							.text( stat.name )
-							.append( $("<span class=\"badge\">").text( stat.stat ) )
-							.hide().fadeIn().css("display","block")
-					);
+				$lists.each(function()
+				{
+					if ($(this).children().length > 1)
+					{
+						$(this).find(".list-group-item.oppa-stat-empty").remove();
+					}
 				});
 				
 				this.progressLoader(100);
+				
+				this.target.find("[data-comp-type='tab'][data-comp-tab-bar='"+$tabBar.data("compName")+"'][data-comp-tab-content='available']")
+					.trigger("click");
 				
 				return true;
 			},
 			
 			"generateStats": function()
 			{
-				var results = [];
+				var results = {
+					"available": [],
+					"averages": [],
+					"other": []
+				};
+				
+				// Order matters
+				var statSections = {
+					"totalReportsFromAuditors": {
+						"list": "available",
+						"stats": [
+							{
+								"name": "Reports obtained from Auditors",
+								"stat": "break"
+							}
+						]
+					},
+					"totalsFromBackend": {
+						"list": "available",
+						"stats": [
+							{
+								"name": "Totals returned from backend",
+								"stat": "break"
+							}
+						]
+					},
+					"frontEndAverages": {
+						"list": "averages",
+						"stats": [
+							{
+								"name": "Front End Averages",
+								"stat": "break"
+							}
+						]
+					},
+					"backEndAverages": {
+						"list": "averages",
+						"stats": [
+							{
+								"name": "Back End Averages",
+								"stat": "break"
+							}
+						]
+					}
+				};
+				
 				var data = oppa.data;
 				
-				if (data && data.realms && data.realms.frontend)
+				if (data)
 				{
-					if (data.realms.frontend.BoomerangPerformanceAuditor)
+					if (data.realms && data.realms.frontend)
 					{
-						var boomerangAuditorMetrics = data.realms.frontend.BoomerangPerformanceAuditor;
-						var boomerang = {
-							"total": 0,
-							"count": 0,
-						};
 						
-						for(var i=0;i<boomerangAuditorMetrics.length;i++)
+						for(var sourceName in data.realms.frontend)
 						{
-							var metrics = boomerangAuditorMetrics[i];
-							var data = JSON.parse(metrics.data);
-							boomerang.total += data.paneLoad;
-							boomerang.count++;
+							statSections.totalReportsFromAuditors.stats.push({
+								"name": sourceName,
+								"stat": data.realms.frontend[ sourceName ].length
+							});
 						}
+						
+						if (data.realms.frontend.BoomerangPerformanceAuditor)
+						{
+							var boomerangAuditorMetrics = data.realms.frontend.BoomerangPerformanceAuditor;
+							var boomerangCounts = {
+								"total": 0,
+								"count": 0,
+							};
+						
+							for(var i=0;i<boomerangAuditorMetrics.length;i++)
+							{
+								var metrics = boomerangAuditorMetrics[i];
+								var metricData = JSON.parse(metrics.data);
+								boomerangCounts.total += metricData.paneLoad;
+								boomerangCounts.count++;
+							}
 				
-						results.push({
-							"name": "Average wait until Paneload event is fired. ",
-							"stat": ((boomerang.total / boomerang.count) / 100 / 60).toFixed(5)
-						});
+							statSections.frontEndAverages.stats.push({
+								"name": "Average wait until Paneload event is fired. [in seconds]",
+								"stat": ((boomerangCounts.total / boomerangCounts.count) / 100 / 60).toFixed(3) + "s"
+							});
+						}
+					}
+					
+					if (data.realms && data.realms.backend)
+					{
+						for(var sourceName in data.realms.backend)
+						{
+							statSections.totalReportsFromAuditors.stats.push({
+								"name": sourceName,
+								"stat": data.realms.backend[ sourceName ].length
+							});
+						}
+						
+						if (data.realms.backend.XHProfPerformanceAuditor)
+						{
+							var xhprofAuditorMetrics = data.realms.backend.XHProfPerformanceAuditor;
+							var xhprofCounts = {
+								"total": 0,
+								"count": 0,
+								"funcs": {}
+							};
+							
+							for(var i=0;i<xhprofAuditorMetrics.length;i++)
+							{
+								var metrics = xhprofAuditorMetrics[i];
+								var metricData = JSON.parse(metrics.data);
+								var highestUsageFunc = {};
+								for (var metricDataFuncName in metricData)
+								{
+									var xhprofStat = metricData[metricDataFuncName];
+									if (!highestUsageFunc.wt || xhprofStat.wt > highestUsageFunc.wt)
+									{
+										xhprofStat["func"] = metricDataFuncName;
+										highestUsageFunc = xhprofStat;
+									}
+								}
+								xhprofCounts.total += highestUsageFunc.wt;
+								xhprofCounts.count++;
+							}
+							
+							statSections.backEndAverages.stats.push({
+								"name": "Average wait until Paneload event is fired. [in seconds]",
+								"stat": ((xhprofCounts.total / xhprofCounts.count) / 100 / 60).toFixed(3) + "s"
+							});
+						}
+					}
+					
+					if (data.realms && data.realms.network)
+					{
+						
+					}
+					
+					if (data.totals)
+					{
+						for(var totalName in data.totals)
+						{
+							statSections.totalsFromBackend.stats.push({
+								"name": totalName,
+								"stat": data.totals[ totalName ]
+							});
+						}
 					}
 				}
 				
+				for(var statSectionName in statSections)
+				{
+					var statSection = statSections[ statSectionName ];
+					$.merge(results[ statSection.list ], statSection.stats);
+				}
+				
 				return results;
+			},
+			
+			"bindings": function()
+			{
+				var _this = this;
+				
+				this.target.find("[data-comp-type='tab-bar']").delegate("li", "click", function(){
+					var tabContentName = $(this).data("compTabContent");
+					
+					$(this).addClass("active").siblings().removeClass("active");
+					
+					_this.target.find("[data-comp-type='tab-content'][data-comp-widget='"+_this.name+"']")
+						.hide().filter("[data-comp-name='"+tabContentName+"']").fadeIn();
+				});
 			}
 		},
-		"graph-realms": {},
-		"graph-yslow": {},
-		"graph-browsercache": {}
+		
+		
+		"graph-realms": {
+			"init": function()
+			{
+				
+				return this.render();
+			},
+			
+			"render": function()
+			{
+				var $graph = this.target.find("[data-comp-type='graph']").filter("[data-comp-widget='"+ this.name +"']");
+				var $container = $graph.parent();
+				var width = $container.parent().innerWidth() - parseInt($container.find(".panel-body").css("padding-left"));
+				
+				$graph.attr("width",  width);
+				
+				this.context = $graph.get(0).getContext("2d");
+				this.chart = new Chart(this.context).Radar({
+					labels : ["Eating","Drinking","Sleeping","Designing","Coding","Partying","Running"],
+					datasets : [
+						{
+							fillColor : "rgba(220,220,220,0.5)",
+							strokeColor : "rgba(220,220,220,1)",
+							pointColor : "rgba(220,220,220,1)",
+							pointStrokeColor : "#fff",
+							data : [65,59,90,81,56,55,40]
+						},
+						{
+							fillColor : "rgba(151,187,205,0.5)",
+							strokeColor : "rgba(151,187,205,1)",
+							pointColor : "rgba(151,187,205,1)",
+							pointStrokeColor : "#fff",
+							data : [28,48,40,19,96,27,100]
+						}
+					]
+				});
+				
+				return true;
+			}
+		},
+		
+		
+		"graph-yslow": {
+			"init": function()
+			{
+				
+				return this.render();
+			},
+			
+			"render": function()
+			{
+				var $graph = this.target.find("[data-comp-type='graph']").filter("[data-comp-widget='"+ this.name +"']");
+				var $container = $graph.parent();
+				var width = $container.parent().innerWidth() - parseInt($container.find(".panel-body").css("padding-left"));
+				
+				$graph.attr("width",  width);
+				
+				this.context = $graph.get(0).getContext("2d");
+				this.chart = new Chart(this.context).Line({
+					labels : ["January","February","March","April","May","June","July"],
+					datasets : [
+						{
+							fillColor : "rgba(220,220,220,0.5)",
+							strokeColor : "rgba(220,220,220,1)",
+							pointColor : "rgba(220,220,220,1)",
+							pointStrokeColor : "#fff",
+							data : [65,59,90,81,56,55,40]
+						},
+						{
+							fillColor : "rgba(151,187,205,0.5)",
+							strokeColor : "rgba(151,187,205,1)",
+							pointColor : "rgba(151,187,205,1)",
+							pointStrokeColor : "#fff",
+							data : [28,48,40,19,96,27,100]
+						}
+					]
+				});
+				
+				return true;
+			}
+		},
+		
+		
+		"graph-browsercache": {
+			"init": function()
+			{
+				
+				return this.render();
+			},
+			
+			"render": function()
+			{
+				var $graph = this.target.find("[data-comp-type='graph']").filter("[data-comp-widget='"+ this.name +"']");
+				var $container = $graph.parent();
+				var width = $container.parent().innerWidth() - parseInt($container.find(".panel-body").css("padding-left"));
+				
+				$graph.attr("width",  width);
+				
+				this.context = $graph.get(0).getContext("2d");
+				this.chart = new Chart(this.context).PolarArea([
+					{
+						value : 30,
+						color: "#D97041"
+					},
+					{
+						value : 90,
+						color: "#C7604C"
+					},
+					{
+						value : 24,
+						color: "#21323D"
+					},
+					{
+						value : 58,
+						color: "#9D9B7F"
+					},
+					{
+						value : 82,
+						color: "#7D4F6D"
+					},
+					{
+						value : 8,
+						color: "#584A5E"
+					}
+				]);
+				
+				return true;
+			}
+		}
 	},
 	
 	"components": {
@@ -128,8 +451,6 @@ window.oppa = {
 		{
 			var Dashboard = function(config)
 			{
-				this.initialized = true;
-				
 				this.widgets = {};
 				
 				for(var propName in config)
@@ -139,6 +460,8 @@ window.oppa = {
 				console.log("Creating dashboard \""+ this.name +"\"!");
 				
 				this.init && this.init();
+				
+				this.initialized = true;
 			}
 
 			Dashboard.prototype.progressLoader = function(percentage)
@@ -177,8 +500,6 @@ window.oppa = {
 		{
 			var Widget = function(config)
 			{
-				this.initialized = true;
-				
 				for(var propName in config)
 				{
 					this[propName] = config[propName];
@@ -186,6 +507,8 @@ window.oppa = {
 				console.log("Creating widget \""+ this.name +"\"!");
 				
 				this.init && this.init();
+				
+				this.initialized = true;
 			}
 
 			Widget.prototype.progressLoader = function(percentage)
@@ -284,11 +607,13 @@ $(function()
 		
 			/**
 			 * @todo Change common time terms
-			 *     "morning"=>"9:00:00"
-			 *     "afternoon"=>"12:00:00"
-			 *     "evening"=>"17:00:00"
-			 *     "dusk"=>"19:00:00"
+			 *     "(in the|at) morning"=>"9:00:00"
+			 *     "(in the|at) afternoon"=>"12:00:00"
+			 *     "(in the|at) evening"=>"17:00:00"
+			 *     "at dusk"=>"19:00:00"
 			 */
+		
+		$(this).find(".glyphicon").removeClass("glyphicon-chevron-right").addClass("glyphicon-chevron-down")
 		
 		$.ajax({
 			"url": "../api/", 
@@ -306,8 +631,39 @@ $(function()
 				
 				$(".oppa-results-set-container").removeClass("hide").children().fadeIn();
 				
+				$("body").animate({
+					"scrollTop": $(".jumbotron").outerHeight() - 50 
+				});
+				
 				window.oppa.init(data.data); 
 			}
 		})
 	});
+	
+	$("body").delegate("#oppa-search-realm", "change", function()
+	{
+		var realms = $(this).val() || [];
+		var sources = [];
+		var $sourceSelect = $("#oppa-search-source");
+		
+		$sourceSelect.find("option").remove();
+		
+		realms.map(function(realm){
+			$.merge(sources, window.oppa.fixtures.realmSourceMap[ realm ] );
+		});
+		
+		sources.map(function(source)
+		{
+			var data = window.oppa.fixtures.sources[source];
+			$sourceSelect.append(
+				$("<option>").attr({
+					"value": source,
+					"selected": data.selected
+				}).text(data.name)
+			)
+		});
+	});
+	
+	$("#oppa-search-realm").val("frontend").trigger("change");
+	
 });

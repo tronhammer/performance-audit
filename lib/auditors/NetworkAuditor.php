@@ -106,8 +106,6 @@ class NetworkAuditor extends PerformanceAuditor implements iPerformanceAuditor
             "type"=>0,
             "start"=>floor($this->start*100000),
             "end"=>floor(PERFORMANCE_AUDIT_START_TIME*100000),
-            "realm"=>self::REALM,
-            "source"=>self::ID,
             "data"=>json_encode($_SERVER)
         ));
 	}
@@ -125,12 +123,12 @@ class NetworkAuditor extends PerformanceAuditor implements iPerformanceAuditor
      * @author <smurray@ontraport.com>
      * @date 02/19/2014
      */
-	public function generateReport($save=true)
+	public function generateReport($criteria)
 	{
 		/**
 		 * @todo Go through apache access logs and record `cachee.php` 200 and 304 hits.
 		 */
-		return array();
+		return parent::generateReport($criteria);
 	}
 	
 	/**

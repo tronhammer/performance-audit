@@ -150,7 +150,10 @@ abstract class PerformanceAuditor
 			$results[] = new PerformanceMetric($entry["id"]);
 		}
 		
-		return $results;
+		return array(
+			"total" => count($results),
+			"reports" => $results
+		);
     }
 
     /**

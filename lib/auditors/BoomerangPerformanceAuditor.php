@@ -178,18 +178,20 @@ class BoomerangPerformanceAuditor extends PerformanceAuditor implements iPerform
      */
 	public function generateReport($criteria)
 	{
-		$report = array();
-		$entries = parent::generateReport($criteria);
+		// $report = array();
+		// $entries = parent::generateReport($criteria);
+		// // 
+		// // foreach($entries as $entry)
+		// // {
+		// // 	
+		// // }
 		// 
-		// foreach($entries as $entry)
-		// {
-		// 	
-		// }
+		// return array(
+		// 	"total" => count($entries),
+		// 	"reports" => $entries
+		// );
 		
-		return array(
-			"total" => count($entries),
-			"reports" => $entries
-		);
+		return parent::generateReport($criteria);
 	}
 	
 	/**

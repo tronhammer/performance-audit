@@ -204,22 +204,22 @@ class XHProfPerformanceAuditor extends PerformanceAuditor implements iPerformanc
      * @author <smurray@ontraport.com>
      * @date 02/19/2014
      */
-    public function generateReport($criteria)
-    {
-        // $a = file_get_contents("./xhprof-out.json");
-        // $b = json_decode($a, true);
-        // $highest = array();
-        // foreach($b[0] as $functionName=>$metrics)
-        // {
-        //     if ($metrics["wt"] > $highest["wt"])
-        //     {
-        //         $metrics["func"] = $functionName;
-        //         $highest = $metrics;
-        //     }
-        // }
-        // 
-        
-        return parent::generateReport();
-    }
+	public function generateReport($criteria)
+	{
+		// $report = array();
+		// $entries = parent::generateReport($criteria);
+		// // 
+		// // foreach($entries as $entry)
+		// // {
+		// // 	
+		// // }
+		// 
+		// return array(
+		// 	"total" => count($entries),
+		// 	"reports" => $entries
+		// );
+		
+		return parent::generateReport($criteria);
+	}
     /**#@-*/
 }
