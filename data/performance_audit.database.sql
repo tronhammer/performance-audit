@@ -3,6 +3,7 @@ CREATE DATABASE `performance_audit` COLLATE = `utf8_unicode_ci`;
 CREATE TABLE IF NOT EXISTS `performance_audit`.`metrics` (
     `id` INT(11) NOT NULL AUTO_INCREMENT, 
     `aid` INT(20) NOT NULL, 
+	`uri` VARCHAR(255) NOT NULL,
     `name` VARCHAR(255) NOT NULL, 
     `type` TINYINT(2) NOT NULL DEFAULT 0,
     `realm` ENUM("backend", "frontend", "network", "system", "remote") NOT NULL,
